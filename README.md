@@ -22,6 +22,7 @@ cd /opt
 git clone https://github.com/jlaundry/pihole-sentinel.git
 cd pihole-sentinel
 python3 -m venv .env
+sudo chown -R $USER:$USER .env
 source .env/bin/activate
 pip install -r requirements.txt
 echo 'AZURE_WORKSPACE_ID = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"' | sudo tee local_settings.py
