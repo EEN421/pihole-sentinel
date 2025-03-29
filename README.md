@@ -21,7 +21,7 @@ You will need:
 cd /opt
 git clone https://github.com/jlaundry/pihole-sentinel.git
 cd pihole-sentinel
-python3 -m venv .env
+sudo python3 -m venv .env
 sudo chown -R $USER:$USER .env
 source .env/bin/activate
 pip install -r requirements.txt
@@ -30,7 +30,7 @@ echo 'AZURE_SECRET_KEY = " xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx=="' | sudo tee -a loc
 
 
 touch /var/log/pihole-sentinel.log
-chown pihole:pihole /var/log/pihole-sentinel.log
+sudo chown pihole:pihole /var/log/pihole-sentinel.log
 
 echo '* * * * * pihole /opt/pihole-sentinel/cron.sh >> /var/log/pihole-sentinel.log 2>&1' | sudo tee /etc/cron.d/pihole-sentinel
 
