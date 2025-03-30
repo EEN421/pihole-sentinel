@@ -19,7 +19,7 @@ You will need:
 ```bash
 
 cd /opt
-git clone https://github.com/jlaundry/pihole-sentinel.git
+git clone https://github.com/EEN421/pihole-sentinel.git
 cd pihole-sentinel
 sudo python3 -m venv .env
 sudo chown -R $USER:$USER .env
