@@ -40,6 +40,8 @@ Deployment template for Sentinel Workbook:
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw%2Egithubusercontent%2Ecom%2FEEN421%2Fpihole%2Dsentinel%2Fmain%2FpiholeWorkbook_GalleryTemplate%2Ejson)
 
+<br/>
+<br/>
 
 Deployment template for the Analytic rule: 
 
