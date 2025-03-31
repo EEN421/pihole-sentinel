@@ -38,14 +38,4 @@ echo '* * * * * pihole /opt/pihole-sentinel/cron.sh >> /var/log/pihole-sentinel.
 <br/>
 <br/>
 
-Deployment template for Sentinel Workbook:
-
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw%2Egithubusercontent%2Ecom%2FEEN421%2Fpihole-sentinel%2Fmain%2FpiholeWorkbook_ARM%2Ejson)
-
-<br/>
-<br/>
-
-Deployment template for the Analytic rule: 
-
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw%2Egithubusercontent%2Ecom%2FEEN421%2Fpihole%2Dsentinel%2Fmain%2FAzure%5FSentinel%5Fanalytic%5Frule%2Ejson)
-
+🚀✨ Check out the **Sentinel Workbook** and **Analytics Rule** included above to hunt through your DNS queries and protect your network like a pro! 🔥📊
