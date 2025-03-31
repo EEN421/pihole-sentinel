@@ -38,4 +38,4 @@ echo '* * * * * pihole /opt/pihole-sentinel/cron.sh >> /var/log/pihole-sentinel.
 
 Deployment template for the Analytic rule: 
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw%2Egithubusercontent%2Ecom%2Fjlaundry%2Fpihole%2Dsentinel%2Fmain%2FAzure%5FSentinel%5Fanalytic%5Frule%2Ejson)
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw%2Egithubusercontent%2Ecom%2FEEN421%2Fpihole%2Dsentinel%2Fmain%2FAzure%5FSentinel%5Fanalytic%5Frule%2Ejson)
