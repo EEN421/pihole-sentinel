@@ -51,7 +51,7 @@
               "showDefault": false
             },
             "jsonData": "[\r\n    { \"value\": \"Operations\", \"label\": \"Operations\"},\r\n    { \"value\": \"Security\", \"label\": \"Security\"}\r\n\r\n]",
-            "value": "Operations"
+            "value": "Security"
           },
           {
             "id": "11c9d6b6-ccf3-426f-b0a4-3b8df87564cf",
@@ -156,6 +156,27 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
+        "query": "//Top Clients Making DNS Requests\r\npihole_CL\r\n| summarize Requests = count() by SrcIpAddr_s\r\n| top 10 by Requests",
+        "size": 0,
+        "showAnalytics": true,
+        "title": "Top Clients",
+        "timeContextFromParameter": "TimeRange",
+        "showExportToExcel": true,
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces"
+      },
+      "conditionalVisibility": {
+        "parameterName": "Tab",
+        "comparison": "isEqualTo",
+        "value": "Security"
+      },
+      "customWidth": "50",
+      "name": "query - 4"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
         "query": "//New or Rarely Seen Domains\r\nlet cutoff = ago(24h);\r\nlet recent = pihole_CL\r\n| where TimeGenerated > cutoff\r\n| summarize count() by DnsQuery_s;\r\nlet historic = pihole_CL\r\n| where TimeGenerated <= cutoff\r\n| summarize count() by DnsQuery_s;\r\nrecent\r\n| join kind=leftanti historic on DnsQuery_s\r\n| top 20 by count_",
         "size": 0,
         "showAnalytics": true,
@@ -174,26 +195,6 @@
       },
       "customWidth": "50",
       "name": "query - 6"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "//Top Clients Making DNS Requests\r\npihole_CL\r\n| summarize Requests = count() by SrcIpAddr_s\r\n| top 10 by Requests",
-        "size": 0,
-        "showAnalytics": true,
-        "title": "Top Clients",
-        "timeContextFromParameter": "TimeRange",
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces"
-      },
-      "conditionalVisibility": {
-        "parameterName": "Tab",
-        "comparison": "isEqualTo",
-        "value": "Security"
-      },
-      "name": "query - 4"
     },
     {
       "type": 3,
