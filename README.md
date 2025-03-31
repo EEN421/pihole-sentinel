@@ -38,4 +38,4 @@ echo '* * * * * pihole /opt/pihole-sentinel/cron.sh >> /var/log/pihole-sentinel.
 <br/>
 <br/>
 
-&#x1F449; Check out the **Sentinel Workbook** and **Analytics Rule** included above to hunt through your DNS queries and protect your network like a pro! 🔥
+&#x1F449; Check out the [Sentinel Workbook](https://github.com/EEN421/pihole-sentinel/blob/main/piholeWorkbook_GalleryTemplate.json) and [Analytics Rule](https://github.com/EEN421/pihole-sentinel/blob/main/Azure_Sentinel_analytic_rule.json) included above to hunt through your DNS queries and protect your network like a pro! 🔥
