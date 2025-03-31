@@ -40,7 +40,7 @@ echo '* * * * * pihole /opt/pihole-sentinel/cron.sh >> /var/log/pihole-sentinel.
 
 Deployment template for Sentinel Workbook:
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw%2Egithubusercontent%2Ecom%2FEEN421%2Fpihole%2Dsentinel%2Fmain%2FpiholeWorkbook_GalleryTemplate%2Ejson)
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw%2Egithubusercontent%2Ecom%2FEEN421%2Fpihole-sentinel%2Fmain%2FpiholeWorkbook_ARM%2Ejson)
 
 <br/>
 <br/>
