@@ -1,4 +1,3 @@
-
 import logging
 logging.basicConfig(level=logging.INFO)
 
@@ -38,22 +37,23 @@ QUERY_TYPES = {
 }
 
 QUERY_STATUS = {
-    0: "Failure: Unknown status (not yet known)",
-    1: "Failure: Domain contained in gravity database",
+    0: "Failure: Unknown status",
+    1: "Failure: Blocked by gravity",
     2: "Success: Forwarded",
-    3: "Success: Known, replied to from cache",
-    4: "Failure: Domain matched by a regex blacklist filter",
-    5: "Failure: Domain contained in exact blacklist",
-    6: "Failure: By upstream server (known blocking page IP address)",
-    7: "Failure: By upstream server (0.0.0.0 or ::)",
-    8: "Failure: By upstream server (NXDOMAIN with RA bit unset)",
-    9: "Failure: Domain contained in gravity database",
-    10: "Failure: Domain matched by a regex blacklist filter",
-    11: "Failure: Domain contained in exact blacklist",
+    3: "Success: Cached",
+    4: "Failure: Blocked by regex",
+    5: "Failure: Blocked (exact blacklist)",
+    6: "Failure: Upstream - known blocking page",
+    7: "Failure: Upstream - 0.0.0.0 or ::",
+    8: "Failure: Upstream - NXDOMAIN",
+    9: "Failure: Blocked by gravity (again?)",
+    10: "Failure: Blocked by regex (again?)",
+    11: "Failure: Blocked (exact blacklist again?)",
     12: "Success: Retried query",
-    13: "Success: Retried but ignored query (this may happen during ongoing DNSSEC validation)",
-    14: "Success: Already forwarded, not forwarding again",
+    13: "Success: Retried (ignored)",
+    14: "Success: Already forwarded",
 }
+
 
 sentinel = LogAnalytics(AZURE_WORKSPACE_ID, AZURE_SECRET_KEY)
 
@@ -95,7 +95,7 @@ for row in cur.execute('SELECT * FROM queries WHERE id >:id ORDER BY id', {"id":
         "EventCount": 1,
         "EventOriginalUid": str(row['id']),
         "EventType": "lookup",
-        "EventResult": QUERY_STATUS.get(row['status']).split(":")[0],
+        "EventResult": QUERY_STATUS.get(int(row['status']), "Failure: Unrecognized").split(":")[0],
         "EventResultDetails": QUERY_TYPES.get(row['type']),
         "EventProduct": "Pi Hole",
         "EventVendor": "Pi Hole",
@@ -117,4 +117,3 @@ for row in cur.execute('SELECT * FROM queries WHERE id >:id ORDER BY id', {"id":
 
 con.close()
 update_latest(row['id'], force=True)
-
