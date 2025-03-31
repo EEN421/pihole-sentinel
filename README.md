@@ -35,6 +35,8 @@ sudo chown pihole:pihole /var/log/pihole-sentinel.log
 echo '* * * * * pihole /opt/pihole-sentinel/cron.sh >> /var/log/pihole-sentinel.log 2>&1' | sudo tee /etc/cron.d/pihole-sentinel
 
 ```
+<br/>
+<br/>
 
 Deployment template for Sentinel Workbook:
 
