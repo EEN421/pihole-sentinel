@@ -50,8 +50,8 @@
               "additionalResourceOptions": [],
               "showDefault": false
             },
-            "jsonData": "[\r\n    { \"value\": \"ExecutiveSummary\", \"label\": \"Executive Summary\"},\r\n    { \"value\": \"IncidentResponse\", \"label\": \"Incident Response\"},\r\n    { \"value\": \"RiskReduction\", \"label\": \"Risk Reduction\"},\r\n    { \"value\": \"ThreatLandscape\", \"label\": \"Threat Landscape\"},\r\n    { \"value\": \"MDO\", \"label\": \"MDO\"},\r\n    { \"value\": \"MDE\", \"label\": \"MDE\"},\r\n    { \"value\": \"MDCA\", \"label\": \"MDCA\"},\r\n    { \"value\": \"Usage\", \"label\": \"Usage\"},\r\n    { \"value\": \"SignInLogs\", \"label\": \"Sign-in Logs\"},\r\n    { \"value\": \"Mitre\", \"label\": \"Mitre ATT&CK\"}\r\n]",
-            "value": "ExecutiveSummary"
+            "jsonData": "[\r\n    { \"value\": \"Operations\", \"label\": \"Operations\"},\r\n    { \"value\": \"Security\", \"label\": \"Security\"}\r\n\r\n]",
+            "value": "Operations"
           },
           {
             "id": "11c9d6b6-ccf3-426f-b0a4-3b8df87564cf",
@@ -72,26 +72,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "SecurityIncident\r\n| summarize OpenedIncidents = countif(Status == \"New\"), ClosedIncidents = countif(Status == \"Closed\") by bin(TimeGenerated, 1d)\r\n| render timechart",
-        "size": 0,
-        "showAnalytics": true,
-        "timeContextFromParameter": "TimeRange",
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces"
-      },
-      "conditionalVisibility": {
-        "parameterName": "Tab",
-        "comparison": "isEqualTo",
-        "value": "IncidentResponse"
-      },
-      "name": "query - 35"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "Usage                                                                               // <--Query the Usage table\r\n| where IsBillable == true                                                          // <--Only include 'billable' data\r\n| summarize TotalVolumeGB = sum(Quantity) / 1000 by bin(StartTime, 1d), Solution    // <--Chop it up into GB / Day\r\n| render columnchart                                                                // <--Graph the results",
+        "query": "Usage\r\n| where TimeGenerated > ago(90d) \r\n| where IsBillable == true\r\n| where DataType == \"pihole_CL\"\r\n| summarize TotalVolumeGB = sum(Quantity) / 1000 by bin(StartTime, 1d), DataType\r\n| render columnchart     ",
         "size": 0,
         "showAnalytics": true,
         "title": "Billable Usage",
@@ -104,132 +85,19 @@
       "conditionalVisibility": {
         "parameterName": "Tab",
         "comparison": "isEqualTo",
-        "value": "ExecutiveSummary"
+        "value": "Operations"
       },
+      "customWidth": "50",
       "name": "Main Tab Group"
     },
     {
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "AuditLogs\r\n| where TimeGenerated > ago(90d)\r\n| where OperationName in (\r\n    \"Add member to role requested (PIM activation)\",\r\n    \"Add member to role completed (PIM activation)\",\r\n    \"Add user\",\r\n    \"Add member to group\",\r\n    \"Add device\",\r\n    \"Add registered owner to device\",\r\n    \"Add member to role\",\r\n    \"Add eligible member to role in PIM requested (timebound)\",\r\n    \"Add eligible member to role in PIM completed (timebound)\",\r\n    \"Add member to role in PIM completed (permanent)\",\r\n    \"Add member to role in PIM requested (permanent)\",\r\n    \"Add member to role outside of PIM (permanent)\",\r\n    \"Add eligible member to role in PIM completed (permanent)\",\r\n    \"Add eligible member to role in PIM requested (permanent)\",\r\n    \"Add eligible member to role\",\r\n    \"Add conditional access policy\",\r\n    \"Add partner to company\"\r\n)\r\n| summarize count() by OperationName",
+        "query": "//Success vs. Failure Ratios Over Time\r\npihole_CL\r\n| summarize Count = count() by bin(TimeGenerated, 1h), EventResult_s\r\n| render timechart",
         "size": 0,
         "showAnalytics": true,
-        "title": "Top Operations Performed in Azure",
-        "timeContextFromParameter": "TimeRange",
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces",
-        "gridSettings": {
-          "sortBy": [
-            {
-              "itemKey": "count_",
-              "sortOrder": 2
-            }
-          ]
-        },
-        "sortBy": [
-          {
-            "itemKey": "count_",
-            "sortOrder": 2
-          }
-        ]
-      },
-      "conditionalVisibility": {
-        "parameterName": "Tab",
-        "comparison": "isEqualTo",
-        "value": "ExecutiveSummary"
-      },
-      "customWidth": "50",
-      "name": "query - 22"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "let PriorPeriod = toscalar(\n    Usage\n    | where TimeGenerated > ago(60d) and TimeGenerated <= ago(30d)\n    | where IsBillable == true\n    | summarize min(TimeGenerated)\n);\nlet CurrentPeriod = toscalar(\n    Usage\n    | where TimeGenerated > ago(30d)\n    | where IsBillable == true\n    | summarize max(TimeGenerated)\n);\nlet PriorData = Usage\n    | where TimeGenerated between (PriorPeriod .. ago(30d))\n    | where IsBillable == true\n    | summarize PriorGB = round(todouble(sum(Quantity))/1024, 2) by DataType;\nlet CurrentData = Usage\n    | where TimeGenerated > ago(30d)\n    | where IsBillable == true\n    | summarize CurrentGB = round(todouble(sum(Quantity))/1024, 2) by DataType;\nPriorData\n| join kind=fullouter CurrentData on DataType\n| extend \n    DataType = coalesce(DataType, DataType1),\n    PriorGB = coalesce(PriorGB, 0.0),\n    CurrentGB = coalesce(CurrentGB, 0.0),\n    ChangeGB = coalesce(CurrentGB - PriorGB, 0.0)\n| project \n    ['Data Source'] = DataType,\n    ['Previous 30 Days (GB)'] = PriorGB,\n    ['Current 30 Days (GB)'] = CurrentGB,\n    ['Change (GB)'] = round(CurrentGB - PriorGB, 2),\n    ['Change %'] = iif(PriorGB > 0, round(((CurrentGB - PriorGB) / PriorGB) * 100, 1), 100.0),\n    ['Change $'] = strcat('$', round(ChangeGB * {CostPerGB}, 2))\n| where ['Current 30 Days (GB)'] > 0 or ['Previous 30 Days (GB)'] > 0\n| top 10 by abs(['Change (GB)']) desc",
-        "size": 0,
-        "showAnalytics": true,
-        "title": "Data Sources with Biggest Delta in Log Volume",
-        "timeContextFromParameter": "TimeRange",
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "table",
-        "showExpandCollapseGrid": true,
-        "gridSettings": {
-          "formatters": [
-            {
-              "columnMatch": "Previous 30 Days (GB)",
-              "formatter": 4,
-              "formatOptions": {
-                "min": 0,
-                "palette": "blue"
-              }
-            },
-            {
-              "columnMatch": "Current 30 Days (GB)",
-              "formatter": 4,
-              "formatOptions": {
-                "min": 0,
-                "palette": "blue"
-              }
-            },
-            {
-              "columnMatch": "Change (GB)",
-              "formatter": 4,
-              "formatOptions": {
-                "min": 0,
-                "palette": "redGreen"
-              }
-            },
-            {
-              "columnMatch": "Change %",
-              "formatter": 4,
-              "formatOptions": {
-                "min": 0,
-                "palette": "redGreen"
-              }
-            },
-            {
-              "columnMatch": "Change $",
-              "formatter": 4,
-              "formatOptions": {
-                "min": 0,
-                "palette": "redGreen"
-              }
-            }
-          ],
-          "sortBy": [
-            {
-              "itemKey": "$gen_bar_Change %_4",
-              "sortOrder": 2
-            }
-          ]
-        },
-        "sortBy": [
-          {
-            "itemKey": "$gen_bar_Change %_4",
-            "sortOrder": 2
-          }
-        ]
-      },
-      "conditionalVisibility": {
-        "parameterName": "Tab",
-        "comparison": "isEqualTo",
-        "value": "ExecutiveSummary"
-      },
-      "customWidth": "50",
-      "name": "query - 12"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "SecurityIncident\r\n| summarize IncidentsCreated = count(), IncidentsClosed = countif(Status == \"Closed\") by bin(TimeGenerated, 1d)\r\n| render timechart\r\n",
-        "size": 0,
-        "showAnalytics": true,
-        "title": "Incident Trend Over Time",
+        "title": "Success vs Failure Ratios Over Time",
         "timeContextFromParameter": "TimeRange",
         "showExportToExcel": true,
         "queryType": 0,
@@ -238,27 +106,92 @@
       "conditionalVisibility": {
         "parameterName": "Tab",
         "comparison": "isEqualTo",
-        "value": "ThreatLandscape"
+        "value": "Operations"
       },
+      "customWidth": "50",
       "name": "query - 8"
     },
     {
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "// Identifies alerts with significant increases compared to the previous period and categorizes severity levels.\r\nlet timeRange = 90d;\r\nSecurityAlert\r\n| where TimeGenerated > ago(timeRange)\r\n| summarize CurrentCount = count() by AlertName\r\n| join kind=fullouter (\r\n    SecurityAlert\r\n    | where TimeGenerated > ago(2 * timeRange) and TimeGenerated <= ago(timeRange)\r\n    | summarize PreviousCount = count() by AlertName\r\n) on AlertName\r\n| project AlertName, \r\n          CurrentCount = coalesce(CurrentCount, 0), \r\n          PreviousCount = coalesce(PreviousCount, 0),\r\n          PercentChange = iff(PreviousCount == 0, 100.0, (CurrentCount - PreviousCount) * 100.0 / PreviousCount)\r\n// Apply filters to focus on meaningful trends\r\n| where CurrentCount > 10 \r\n| where PercentChange > 50 \r\n// Assign severity level indicators\r\n| extend SeverityIndicator = case(\r\n    PercentChange >= 500, \"🔥 Extreme Spike\",\r\n    PercentChange >= 200, \"🔴 Critical Increase\",\r\n    PercentChange >= 100, \"🟠 Major Increase\",\r\n    PercentChange >= 50, \"🟡 Moderate Increase\",\r\n    \"🟢 Low Increase\"\r\n)\r\n// Apply color coding to % Change\r\n| extend ChangeColor = case(\r\n    PercentChange > 200, \"🔴\",\r\n    PercentChange > 100, \"🟠\",\r\n    PercentChange > 50, \"🟡\",\r\n    \"🟢\"\r\n)\r\n// Sort by absolute % change in descending order to highlight most significant shifts\r\n| sort by abs(PercentChange) desc\r\n| top 10 by abs(PercentChange) desc\r\n// Improve column naming for readability\r\n| project [\"Alert Type\"] = AlertName, \r\n          [\"Current Period Alerts\"] = CurrentCount, \r\n          [\"Previous Period Alerts\"] = PreviousCount, \r\n          [\"% Change\"] = strcat(ChangeColor, \" \", round(PercentChange, 2), \"%\"),\r\n          [\"Severity\"] = SeverityIndicator\r\n",
+        "query": "//Blocked DNS Queries Over Time\r\npihole_CL\r\n| where EventResult_s == \"Failure\"\r\n| summarize BlockedRequests = count() by bin(TimeGenerated, 1h)\r\n| render timechart\r\n",
         "size": 0,
         "showAnalytics": true,
-        "title": "Alert Trends",
+        "title": "Blocked DNS Queries Over Time",
+        "timeContextFromParameter": "TimeRange",
         "showExportToExcel": true,
         "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "table"
+        "resourceType": "microsoft.operationalinsights/workspaces"
       },
       "conditionalVisibility": {
         "parameterName": "Tab",
         "comparison": "isEqualTo",
-        "value": "ThreatLandscape"
+        "value": "Security"
+      },
+      "name": "query - 5"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "//Most Queried Domains\r\npihole_CL\r\n| summarize QueryCount = count() by DnsQuery_s\r\n| top 10 by QueryCount",
+        "size": 0,
+        "showAnalytics": true,
+        "title": "Most Queried Domains",
+        "timeContextFromParameter": "TimeRange",
+        "showExportToExcel": true,
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces"
+      },
+      "conditionalVisibility": {
+        "parameterName": "Tab",
+        "comparison": "isEqualTo",
+        "value": "Security"
+      },
+      "customWidth": "50",
+      "name": "Most Queried Domains"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "//New or Rarely Seen Domains\r\nlet cutoff = ago(24h);\r\nlet recent = pihole_CL\r\n| where TimeGenerated > cutoff\r\n| summarize count() by DnsQuery_s;\r\nlet historic = pihole_CL\r\n| where TimeGenerated <= cutoff\r\n| summarize count() by DnsQuery_s;\r\nrecent\r\n| join kind=leftanti historic on DnsQuery_s\r\n| top 20 by count_",
+        "size": 0,
+        "showAnalytics": true,
+        "title": "New or Rarely Seen Domains",
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "showExportToExcel": true,
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces"
+      },
+      "conditionalVisibility": {
+        "parameterName": "Tab",
+        "comparison": "isEqualTo",
+        "value": "Security"
+      },
+      "customWidth": "50",
+      "name": "query - 6"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "//Top Clients Making DNS Requests\r\npihole_CL\r\n| summarize Requests = count() by SrcIpAddr_s\r\n| top 10 by Requests",
+        "size": 0,
+        "showAnalytics": true,
+        "title": "Top Clients",
+        "timeContextFromParameter": "TimeRange",
+        "showExportToExcel": true,
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces"
+      },
+      "conditionalVisibility": {
+        "parameterName": "Tab",
+        "comparison": "isEqualTo",
+        "value": "Security"
       },
       "name": "query - 4"
     },
@@ -266,49 +199,10 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "let TotalAlerts = SecurityAlert\r\n    | where TimeGenerated > ago(90d)\r\n    | summarize TotalCount = count()\r\n    | extend Key = 1;\r\nSecurityAlert\r\n| where TimeGenerated > ago(90d)\r\n| summarize Count = count() by ProductName\r\n| extend Key = 1\r\n| join kind=inner (TotalAlerts) on Key\r\n| extend PercentageOfTotal = strcat(round(Count * 100.0 / TotalCount, 2),'%')\r\n| top 10 by Count\r\n| project ProductName, PercentageOfTotal",
+        "query": "//Query Type Distribution\r\npihole_CL\r\n| summarize Total = count() by DnsQueryTypeName_s\r\n| order by Total desc",
         "size": 0,
         "showAnalytics": true,
-        "title": "Incidents by Product",
-        "timeContextFromParameter": "TimeRange",
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces",
-        "graphSettings": {
-          "type": 0,
-          "topContent": {
-            "columnMatch": "ProductName",
-            "formatter": 1
-          },
-          "centerContent": {
-            "columnMatch": "Count",
-            "formatter": 1,
-            "numberFormat": {
-              "unit": 17,
-              "options": {
-                "maximumSignificantDigits": 3,
-                "maximumFractionDigits": 2
-              }
-            }
-          }
-        }
-      },
-      "conditionalVisibility": {
-        "parameterName": "Tab",
-        "comparison": "isEqualTo",
-        "value": "ThreatLandscape"
-      },
-      "customWidth": "50",
-      "name": "query - 7"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "// Shows percentage breakdown of incidents by severity\r\nSecurityIncident \r\n| where TimeGenerated > ago(90d) \r\n| summarize Count = count() by Severity \r\n| extend Total = toscalar(\r\n    SecurityIncident \r\n    | where TimeGenerated > ago(90d) \r\n    | count\r\n)\r\n| extend Percentage = Count * 100.0 / Total \r\n| project Severity, Count, [\"Percentage (%)\"] = strcat(round(Percentage, 2),'%')\r\n| order by Severity asc",
-        "size": 0,
-        "showAnalytics": true,
-        "title": "% Breakdown of Incidents by Severity",
+        "title": "Query Type Distribution",
         "timeContextFromParameter": "TimeRange",
         "showExportToExcel": true,
         "queryType": 0,
@@ -317,787 +211,35 @@
       "conditionalVisibility": {
         "parameterName": "Tab",
         "comparison": "isEqualTo",
-        "value": "ThreatLandscape"
+        "value": "Operations"
+      },
+      "customWidth": "50",
+      "name": "query - 7"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let PriorPeriod = toscalar(\r\n    Usage\r\n    | where TimeGenerated > ago(60d) and TimeGenerated <= ago(30d)\r\n    | where IsBillable == true\r\n    | summarize min(TimeGenerated)\r\n);\r\nlet CurrentPeriod = toscalar(\r\n    Usage\r\n    | where TimeGenerated > ago(30d)\r\n    | where IsBillable == true\r\n    | summarize max(TimeGenerated)\r\n);\r\nlet PriorData = Usage\r\n    | where TimeGenerated between (PriorPeriod .. ago(30d))\r\n    | where IsBillable == true\r\n    | summarize PriorGB = round(todouble(sum(Quantity))/1024, 2) by DataType;\r\nlet CurrentData = Usage\r\n    | where TimeGenerated > ago(30d)\r\n    | where IsBillable == true\r\n    | summarize CurrentGB = round(todouble(sum(Quantity))/1024, 2) by DataType;\r\nPriorData\r\n| join kind=fullouter CurrentData on DataType\r\n| extend \r\n    DataType = coalesce(DataType, DataType1),\r\n    PriorGB = coalesce(PriorGB, 0.0),\r\n    CurrentGB = coalesce(CurrentGB, 0.0),\r\n    ChangeGB = coalesce(CurrentGB - PriorGB, 0.0)\r\n| project \r\n    ['Data Source'] = DataType,\r\n    ['Previous 30 Days (GB)'] = PriorGB,\r\n    ['Current 30 Days (GB)'] = CurrentGB,\r\n    ['Change (GB)'] = round(CurrentGB - PriorGB, 2),\r\n    ['Change %'] = iif(PriorGB > 0, round(((CurrentGB - PriorGB) / PriorGB) * 100, 1), 100.0),\r\n    ['Change $'] = strcat('$', round(ChangeGB * {CostPerGB}, 2))\r\n| where ['Current 30 Days (GB)'] > 0 or ['Previous 30 Days (GB)'] > 0\r\n| top 10 by abs(['Change (GB)']) desc",
+        "size": 0,
+        "showAnalytics": true,
+        "title": "Change in pihole_CL (Delta)",
+        "timeContextFromParameter": "TimeRange",
+        "showExportToExcel": true,
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces"
+      },
+      "conditionalVisibility": {
+        "parameterName": "Tab",
+        "comparison": "isEqualTo",
+        "value": "Operations"
       },
       "customWidth": "50",
       "name": "query - 9"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "// Top Log Sources with Cost (Enhanced with Colors & Emojis)\r\nUsage\r\n| where IsBillable == true\r\n| summarize GB= round(sum(Quantity)/1000, 2) by DataType\r\n| extend Cost=round(GB*{CostPerGB}, 2)\r\n| sort by Cost desc\r\n| extend CostLevel = case(\r\n    Cost >= 1000, '🤑🤑🤑🤑🤑',  // Most Expensive\r\n    Cost >= 750,  '💰💰💰💰',\r\n    Cost >= 500,  '💰💰💰',\r\n    Cost >= 250,  '💰💰',\r\n    Cost >= 100,  '💰',          // Least Expensive\r\n    '💸'                         // Fallback\r\n)\r\n| extend Cost=strcat('$', Cost, ' ', CostLevel)\r\n| project DataType, GB, Cost\r\n| take 10\r\n",
-        "size": 0,
-        "showAnalytics": true,
-        "title": "Top 10 Billable Log Sources",
-        "timeContextFromParameter": "TimeRange",
-        "exportFieldName": "DataType",
-        "exportParameterName": "SelectedDataType",
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "table"
-      },
-      "conditionalVisibility": {
-        "parameterName": "Tab",
-        "comparison": "isEqualTo",
-        "value": "Usage"
-      },
-      "customWidth": "100",
-      "name": "query - 11"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "// Top Security Events with Cost (Enhanced with Colors & Emojis)\r\nSecurityEvent\r\n| where _IsBillable == True\r\n| summarize EventCount=count(), GB=round(sum(_BilledSize/1000/1000/1000),2) by EventID\r\n| extend TotalCost = round(GB*{CostPerGB},2)\r\n| sort by GB desc\r\n| extend CostLevel = case(\r\n    TotalCost >= 1000, '🤑🤑🤑🤑🤑',  // Most Expensive\r\n    TotalCost >= 750,  '💰💰💰💰',\r\n    TotalCost >= 500,  '💰💰💰',\r\n    TotalCost >= 250,  '💰💰',\r\n    TotalCost >= 100,  '💰',          // Least Expensive\r\n    '💸'                             // Fallback\r\n)\r\n| extend TotalCost=strcat('$', TotalCost, ' ', CostLevel)\r\n| project EventID, GB, TotalCost\r\n| limit 10\r\n",
-        "size": 0,
-        "showAnalytics": true,
-        "title": "Top 10 Security Events",
-        "timeContextFromParameter": "TimeRange",
-        "exportFieldName": "EventID",
-        "exportParameterName": "SelectedEventID",
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces"
-      },
-      "conditionalVisibility": {
-        "parameterName": "Tab",
-        "comparison": "isEqualTo",
-        "value": "Usage"
-      },
-      "customWidth": "50",
-      "name": "query - 12"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "// Top 10 Alerts with Percentage of Total Alerts - Updated/Advanced\r\nlet totalAlerts = toscalar(SecurityAlert\r\n    | where TimeGenerated > ago(90d)\r\n    | summarize TotalCount = count());\r\nSecurityAlert\r\n| where TimeGenerated > ago(90d)\r\n| summarize Count = count() by AlertName\r\n| top 10 by Count desc\r\n| extend PercentageValue = round((Count * 100.0) / totalAlerts, 2)\r\n| extend Percentage = strcat(PercentageValue, '%')\r\n| extend Alert_Severity = case(\r\n        PercentageValue > 20, '🔥 High Impact', \r\n        PercentageValue > 10, '⚠️ Moderate', \r\n        '✅ Low Impact')\r\n| project AlertName, Count, Percentage, [\"Impact Level\"] = Alert_Severity\r\n",
-        "size": 0,
-        "showAnalytics": true,
-        "title": "Top 10 Alerts",
-        "timeContextFromParameter": "TimeRange",
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces"
-      },
-      "conditionalVisibility": {
-        "parameterName": "Tab",
-        "comparison": "isEqualTo",
-        "value": "IncidentResponse"
-      },
-      "customWidth": "40",
-      "name": "query - 0"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "SigninLogs\n| extend ResultText = case(isnotempty(ResultDescription), ResultDescription, ResultType == 0 and isempty(ResultDescription), \"successful login\", \"unknown\") // Create readable result text to include succesfull logins\n| summarize dcount(CorrelationId) by ResultText // Signin results by unique CorrelationId\n| render piechart",
-        "size": 0,
-        "showAnalytics": true,
-        "title": "Login events by result",
-        "timeContextFromParameter": "TimeRange",
-        "exportFieldName": "ResultText",
-        "exportParameterName": "Selected_ResultText",
-        "exportDefaultValue": "",
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces",
-        "chartSettings": {
-          "group": "ResultText",
-          "createOtherGroup": null,
-          "seriesLabelSettings": [
-            {
-              "seriesName": "successful login",
-              "color": "green"
-            }
-          ],
-          "ySettings": {
-            "unit": 17,
-            "min": null,
-            "max": null
-          }
-        }
-      },
-      "conditionalVisibility": {
-        "parameterName": "Tab",
-        "comparison": "isEqualTo",
-        "value": "SignInLogs"
-      },
-      "customWidth": "33",
-      "name": "query - 3"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "SigninLogs\n| where isnotempty(LocationDetails['countryOrRegion']) and ResultType == 0// Where location details are available and login is successful\n| extend city = tostring(LocationDetails['city'])\n| summarize count() by city, Location // Summarize by city name\n| join (\nSigninLogs\n| extend city = tostring(LocationDetails['city'])\n| make-series TrendList = count() on TimeGenerated in range({TimeRange:start}, {TimeRange:end}, {TimeRange:grain}) by city \n) on city\n| project Location, city, [\"Total events\"] = count_, TrendLine = TrendList\n| top 10 by [\"Total events\"] desc",
-        "size": 0,
-        "showAnalytics": true,
-        "title": "successful login locations",
-        "timeContextFromParameter": "TimeRange",
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "table",
-        "gridSettings": {
-          "formatters": [
-            {
-              "columnMatch": "Total events",
-              "formatter": 4,
-              "formatOptions": {
-                "palette": "blue",
-                "showIcon": true
-              }
-            },
-            {
-              "columnMatch": "TrendLine",
-              "formatter": 9,
-              "formatOptions": {
-                "palette": "greenRed",
-                "showIcon": true
-              }
-            },
-            {
-              "columnMatch": "Events",
-              "formatter": 4,
-              "formatOptions": {
-                "palette": "blue",
-                "showIcon": true
-              }
-            },
-            {
-              "columnMatch": "count_",
-              "formatter": 4,
-              "formatOptions": {
-                "showIcon": true
-              }
-            },
-            {
-              "columnMatch": "id",
-              "formatter": 5,
-              "formatOptions": {
-                "showIcon": true
-              }
-            }
-          ],
-          "hierarchySettings": {
-            "idColumn": "city",
-            "parentColumn": "Location",
-            "treeType": 0,
-            "expanderColumn": "city",
-            "expandTopLevel": false
-          }
-        },
-        "sortBy": [],
-        "tileSettings": {
-          "titleContent": {
-            "columnMatch": "city",
-            "formatter": 1,
-            "formatOptions": {
-              "showIcon": true
-            }
-          },
-          "leftContent": {
-            "columnMatch": "count_",
-            "formatter": 12,
-            "formatOptions": {
-              "palette": "auto",
-              "showIcon": true
-            },
-            "numberFormat": {
-              "unit": 17,
-              "options": {
-                "style": "decimal",
-                "maximumFractionDigits": 2,
-                "maximumSignificantDigits": 3
-              }
-            }
-          },
-          "secondaryContent": {
-            "columnMatch": "Events",
-            "formatter": 9,
-            "formatOptions": {
-              "showIcon": true
-            }
-          },
-          "showBorder": false
-        },
-        "graphSettings": {
-          "type": 0,
-          "topContent": {
-            "columnMatch": "LocationDetails",
-            "formatter": 1,
-            "formatOptions": {
-              "showIcon": true
-            }
-          },
-          "centerContent": {
-            "columnMatch": "count_",
-            "formatter": 1,
-            "formatOptions": {
-              "showIcon": true
-            },
-            "numberFormat": {
-              "unit": 17,
-              "options": {
-                "maximumSignificantDigits": 3,
-                "maximumFractionDigits": 2
-              }
-            }
-          },
-          "nodeIdField": "count_",
-          "sourceIdField": "Location",
-          "targetIdField": "city",
-          "nodeSize": null,
-          "staticNodeSize": 100,
-          "colorSettings": null,
-          "hivesMargin": 5
-        },
-        "mapSettings": {
-          "locInfo": "LatLong",
-          "locInfoColumn": "GeoSelection",
-          "latitude": "latitude",
-          "longitude": "longitude",
-          "sizeSettings": "count_",
-          "sizeAggregation": "Sum",
-          "defaultSize": 0,
-          "labelSettings": "locationInfo",
-          "legendMetric": "count_",
-          "legendAggregation": "Sum",
-          "itemColorSettings": {
-            "nodeColorField": "count_",
-            "colorAggregation": "Sum",
-            "type": "heatmap",
-            "heatmapPalette": "redGreen"
-          }
-        }
-      },
-      "conditionalVisibility": {
-        "parameterName": "Tab",
-        "comparison": "isEqualTo",
-        "value": "SignInLogs"
-      },
-      "customWidth": "33",
-      "name": "query - 7"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "SigninLogs\r\n| where RiskLevelDuringSignIn in (\"high\", \"medium\")\r\n| extend Risk = case(\r\n    RiskLevelDuringSignIn == \"high\", \"🔴 High Risk\",\r\n    RiskLevelDuringSignIn == \"medium\", \"🟠 Medium Risk\",\r\n    \"⚪ Unknown\"\r\n)\r\n| summarize RiskySignInAttempts = count(), UniqueUsers = dcount(UserPrincipalName) by UserDisplayName, Risk\r\n| order by RiskySignInAttempts desc\r\n| project UserDisplayName, Risk, RiskySignInAttempts\r\n",
-        "size": 0,
-        "showAnalytics": true,
-        "title": "Risky (High and Medium) Sign-in Attempts by User",
-        "timeContextFromParameter": "TimeRange",
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces"
-      },
-      "conditionalVisibility": {
-        "parameterName": "Tab",
-        "comparison": "isEqualTo",
-        "value": "SignInLogs"
-      },
-      "customWidth": "33",
-      "name": "query - 34"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "//MTTR\r\nSecurityIncident\r\n| where TimeGenerated > ago(90d)\r\n| where Status == \"Closed\"\r\n| summarize MTTR = round(avg(datetime_diff('minute', ClosedTime, CreatedTime)),2)\r\n| extend MTTR_Severity = case(MTTR <= 60, '✅ Fast', MTTR <= 180, '⚠️ Medium', '❌ Slow')",
-        "size": 1,
-        "showAnalytics": true,
-        "timeContextFromParameter": "TimeRange",
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "table"
-      },
-      "conditionalVisibility": {
-        "parameterName": "Tab",
-        "comparison": "isEqualTo",
-        "value": "IncidentResponse"
-      },
-      "customWidth": "20",
-      "name": "query - 1"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "// Get total MTTR\r\nlet TotalMTTRTable = \r\n    SecurityIncident\r\n    | where TimeGenerated > ago(90d)\r\n    | where Status == \"Closed\"\r\n    | summarize TotalMTTR = round(avg(datetime_diff('minute', ClosedTime, CreatedTime)), 2)\r\n    | extend Key = 1;  // Adding a key for joining\r\n// Calculate MTTR per severity\r\nlet SeverityMTTR = \r\n    SecurityIncident\r\n    | where TimeGenerated > ago(90d)\r\n    | where Status == \"Closed\"\r\n    | summarize MedianTTR = percentile(datetime_diff('minute', ClosedTime, CreatedTime), 50) by Severity\r\n    | extend Key = 1;  // Adding a key for joining\r\n// Join both results to calculate percentage\r\nSeverityMTTR\r\n| join kind=inner (TotalMTTRTable) on Key\r\n| extend PercentageOfTotal = strcat(iff(TotalMTTR > 0, round((MedianTTR * 100.0) / TotalMTTR, 2), 0.0),'%')  // Ensure consistent data type\r\n| extend MTTR_Severity = case(\r\n        MedianTTR <= 60, '✅ Fast', \r\n        MedianTTR <= 180, '⚠️ Medium', \r\n        '❌ Slow')\r\n| project Severity, \r\n          [\"Median Time to Resolve (minutes)\"] = MedianTTR, \r\n          [\"% of Total MTTR\"] = PercentageOfTotal, \r\n          [\"MTTR Classification\"] = MTTR_Severity\r\n| order by Severity asc\r\n",
-        "size": 0,
-        "showAnalytics": true,
-        "title": "Median Resolution Time for each Severity Level",
-        "timeContextFromParameter": "TimeRange",
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces"
-      },
-      "conditionalVisibility": {
-        "parameterName": "Tab",
-        "comparison": "isEqualTo",
-        "value": "IncidentResponse"
-      },
-      "customWidth": "40",
-      "name": "query - 10"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "//Top Users for Selected Event ID\r\nSecurityEvent\r\n| where _IsBillable == True\r\n| where EventID == toint('{SelectedEventID}')\r\n| summarize EventCount=count() by Account\r\n| sort by EventCount desc\r\n| limit 10",
-        "size": 0,
-        "showAnalytics": true,
-        "title": "Top 10 Users for Selected Event ID",
-        "timeContextFromParameter": "TimeRange",
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces"
-      },
-      "conditionalVisibilities": [
-        {
-          "parameterName": "SelectedEventID",
-          "comparison": "isNotEmpty"
-        },
-        {
-          "parameterName": "Tab",
-          "comparison": "isEqualTo",
-          "value": "Usage"
-        }
-      ],
-      "customWidth": "50",
-      "name": "query - 13"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "SigninLogs\r\n| where ResultType == 0 and AppDisplayName != \"\"\r\n| summarize count() by AppDisplayName\r\n| join (\r\nSigninLogs\r\n| make-series TrendList = count() on TimeGenerated in range({TimeRange:start}, {TimeRange:end}, 4h) by AppDisplayName \r\n) on AppDisplayName\r\n| top 10 by count_ desc",
-        "size": 4,
-        "showAnalytics": true,
-        "title": "successful logins by application",
-        "timeContextFromParameter": "TimeRange",
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "tiles",
-        "tileSettings": {
-          "titleContent": {
-            "columnMatch": "AppDisplayName",
-            "formatter": 1,
-            "formatOptions": {
-              "showIcon": true
-            }
-          },
-          "leftContent": {
-            "columnMatch": "count_",
-            "formatter": 12,
-            "formatOptions": {
-              "palette": "auto",
-              "showIcon": true
-            },
-            "numberFormat": {
-              "unit": 17,
-              "options": {
-                "maximumSignificantDigits": 3,
-                "maximumFractionDigits": 2
-              }
-            }
-          },
-          "secondaryContent": {
-            "columnMatch": "TrendList",
-            "formatter": 9,
-            "formatOptions": {
-              "showIcon": true
-            }
-          },
-          "showBorder": false
-        },
-        "graphSettings": {
-          "type": 0,
-          "topContent": {
-            "columnMatch": "AppDisplayName",
-            "formatter": 1
-          },
-          "centerContent": {
-            "columnMatch": "count_",
-            "formatter": 1,
-            "numberFormat": {
-              "unit": 17,
-              "options": {
-                "maximumSignificantDigits": 3,
-                "maximumFractionDigits": 2
-              }
-            }
-          }
-        }
-      },
-      "conditionalVisibility": {
-        "parameterName": "Tab",
-        "comparison": "isEqualTo",
-        "value": "SignInLogs"
-      },
-      "name": "query - 14"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "// Top Security Log Reasons with Cost (Enhanced with Colors & Emojis)\r\nCommonSecurityLog\r\n| where isnotempty(Reason) and Reason != \"N/A\"\r\n| extend LogSizeBytes = strlen(tostring(pack_all()))  // Estimate log size per record\r\n| summarize TotalEvents = count(), TotalGB = sum(LogSizeBytes) / (1024 * 1024 * 1024) by Reason, LogSeverity\r\n| extend RawCost = round(TotalGB * {CostPerGB}, 2)\r\n| sort by TotalEvents desc\r\n| extend CostLevel = case(\r\n    RawCost >= 1000, '🤑🤑🤑🤑🤑',  // Most Expensive\r\n    RawCost >= 750,  '💰💰💰💰',\r\n    RawCost >= 500,  '💰💰💰',\r\n    RawCost >= 250,  '💰💰',\r\n    RawCost >= 100,  '💰',          // Least Expensive\r\n    '💸'                             // Fallback\r\n)\r\n| extend IngestCost = strcat('$', tostring(RawCost), ' ', CostLevel)\r\n| project Reason, LogSeverity, TotalEvents, TotalGB, IngestCost\r\n| top 10 by TotalEvents desc\r\n",
-        "size": 0,
-        "showAnalytics": true,
-        "title": "Top 10 CommonSecurityLogs by Severity",
-        "timeContextFromParameter": "TimeRange",
-        "exportFieldName": "Reason",
-        "exportParameterName": "SelectedReason",
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces"
-      },
-      "conditionalVisibility": {
-        "parameterName": "Tab",
-        "comparison": "isEqualTo",
-        "value": "Usage"
-      },
-      "customWidth": "50",
-      "name": "query - 18"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "CommonSecurityLog\r\n| where TimeGenerated > ago(90d)\r\n| where Activity == '{SelectedActivity}'\r\n| summarize count() by SourceUserName\r\n| top 10 by count_ desc",
-        "size": 0,
-        "title": "Top 10 Users for Selected Activity",
-        "timeContext": {
-          "durationMs": 86400000
-        },
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces"
-      },
-      "conditionalVisibilities": [
-        {
-          "parameterName": "SelectedActivity",
-          "comparison": "isNotEmpty"
-        },
-        {
-          "parameterName": "Tab",
-          "comparison": "isEqualTo",
-          "value": "Usage"
-        }
-      ],
-      "customWidth": "50",
-      "name": "query - 19"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "CommonSecurityLog\r\n| where Reason == '{SelectedReason}'\r\n| summarize count() by DestinationUserName, DestinationIP, SourceIP\r\n| top 10 by count_ desc",
-        "size": 0,
-        "showAnalytics": true,
-        "title": "Top 10 Users for Selected Reason",
-        "timeContext": {
-          "durationMs": 86400000
-        },
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces"
-      },
-      "conditionalVisibilities": [
-        {
-          "parameterName": "SelectedReason",
-          "comparison": "isNotEmpty"
-        },
-        {
-          "parameterName": "Tab",
-          "comparison": "isEqualTo",
-          "value": "Usage"
-        }
-      ],
-      "customWidth": "50",
-      "name": "query - 19"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "EmailEvents\r\n| where TimeGenerated > ago(90d)\r\n| where ThreatTypes != \"\"\r\n| summarize Count = count() by ThreatTypes, bin(Timestamp, 1d)\r\n| order by Timestamp desc\r\n| render timechart",
-        "size": 0,
-        "showAnalytics": true,
-        "title": "Threat Trends",
-        "timeContextFromParameter": "TimeRange",
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces"
-      },
-      "conditionalVisibility": {
-        "parameterName": "Tab",
-        "comparison": "isEqualTo",
-        "value": "MDO"
-      },
-      "name": "query - 21"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "// Identifies top recipients of phishing emails and categorizes severity based on volume\r\nEmailEvents\r\n| where ThreatTypes has \"Phish\"\r\n| summarize PhishCount = count() by RecipientEmailAddress, SenderFromDomain\r\n// Assign severity level indicators based on PhishCount\r\n| extend SeverityIndicator = case(\r\n    PhishCount >= 500, \"🔥 Extreme Volume\",\r\n    PhishCount >= 200, \"🔴 Critical Volume\",\r\n    PhishCount >= 100, \"🟠 Major Volume\",\r\n    PhishCount >= 50, \"🟡 Moderate Volume\",\r\n    \"🟢 Low Volume\"\r\n)\r\n// Apply color coding to PhishCount\r\n| extend CountColor = case(\r\n    PhishCount >= 500, \"🔥\",\r\n    PhishCount >= 200, \"🔴\",\r\n    PhishCount >= 100, \"🟠\",\r\n    PhishCount >= 50, \"🟡\",\r\n    \"🟢\"\r\n)\r\n// Sort by the highest volume of phishing emails received\r\n| top 10 by PhishCount desc\r\n// Improve column naming for readability\r\n| project [\"Recipient Email\"] = RecipientEmailAddress, \r\n          [\"Sender Domain\"] = SenderFromDomain, \r\n          [\"Phishing Emails Received\"] = strcat(CountColor, \" \", PhishCount),\r\n          [\"Severity\"] = SeverityIndicator\r\n",
-        "size": 0,
-        "showAnalytics": true,
-        "title": "Top Blocked Phishing Events",
-        "timeContextFromParameter": "TimeRange",
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces"
-      },
-      "conditionalVisibility": {
-        "parameterName": "Tab",
-        "comparison": "isEqualTo",
-        "value": "MDO"
-      },
-      "customWidth": "50",
-      "name": "query - 24"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "EmailEvents\r\n| where ThreatTypes has \"Malware\"\r\n| summarize MalwareEmailsQuarantined = count() by bin(Timestamp, 1d), RecipientEmailAddress, SenderFromDomain\r\n| order by Timestamp desc",
-        "size": 1,
-        "showAnalytics": true,
-        "title": "Top Blocked Malware Email Events",
-        "timeContextFromParameter": "TimeRange",
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces",
-        "gridSettings": {
-          "rowLimit": 10
-        }
-      },
-      "conditionalVisibility": {
-        "parameterName": "Tab",
-        "comparison": "isEqualTo",
-        "value": "MDO"
-      },
-      "customWidth": "50",
-      "name": "query - 23"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "// Identifies top recipients of phishing emails and categorizes severity based on volume\r\nEmailEvents\r\n| where ThreatTypes has \"Phish\"\r\n| summarize PhishCount = count() by RecipientEmailAddress\r\n// Assign severity level indicators based on PhishCount\r\n| extend SeverityIndicator = case(\r\n    PhishCount >= 500, \"🔥 Extreme Target\",\r\n    PhishCount >= 200, \"🔴 Critical Target\",\r\n    PhishCount >= 100, \"🟠 Major Target\",\r\n    PhishCount >= 50, \"🟡 Moderate Target\",\r\n    \"🟢 Low Target\"\r\n)\r\n// Apply color coding to PhishCount\r\n| extend CountColor = case(\r\n    PhishCount >= 500, \"🔥\",\r\n    PhishCount >= 200, \"🔴\",\r\n    PhishCount >= 100, \"🟠\",\r\n    PhishCount >= 50, \"🟡\",\r\n    \"🟢\"\r\n)\r\n// Sort by the highest volume of phishing emails received\r\n| top 10 by PhishCount desc\r\n// Improve column naming for readability\r\n| project [\"Recipient Email\"] = RecipientEmailAddress, \r\n          [\"Phishing Emails Received\"] = strcat(CountColor, \" \", PhishCount),\r\n          [\"Severity\"] = SeverityIndicator\r\n",
-        "size": 0,
-        "showAnalytics": true,
-        "title": "Top Phishing Addressess",
-        "timeContextFromParameter": "TimeRange",
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces"
-      },
-      "conditionalVisibility": {
-        "parameterName": "Tab",
-        "comparison": "isEqualTo",
-        "value": "MDO"
-      },
-      "customWidth": "50",
-      "name": "query - 25"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "// Identifies top phishing sender domains and categorizes severity based on volume\r\nEmailEvents\r\n| where ThreatTypes has \"Phish\"\r\n| summarize PhishCount = count() by SenderFromDomain\r\n// Assign severity level indicators based on PhishCount\r\n| extend SeverityIndicator = case(\r\n    PhishCount >= 1000, \"🔥 Extreme Threat Domain\",\r\n    PhishCount >= 500, \"🔴 Critical Threat Domain\",\r\n    PhishCount >= 200, \"🟠 Major Threat Domain\",\r\n    PhishCount >= 100, \"🟡 Moderate Threat Domain\",\r\n    \"🟢 Low Threat Domain\"\r\n)\r\n// Apply color coding to PhishCount\r\n| extend CountColor = case(\r\n    PhishCount >= 1000, \"🔥\",\r\n    PhishCount >= 500, \"🔴\",\r\n    PhishCount >= 200, \"🟠\",\r\n    PhishCount >= 100, \"🟡\",\r\n    \"🟢\"\r\n)\r\n// Sort by the highest volume of phishing emails sent from a domain\r\n| top 10 by PhishCount desc\r\n// Improve column naming for readability\r\n| project [\"Sender Domain\"] = SenderFromDomain, \r\n          [\"Phishing Emails Sent\"] = strcat(CountColor, \" \", PhishCount),\r\n          [\"Severity\"] = SeverityIndicator\r\n",
-        "size": 0,
-        "showAnalytics": true,
-        "title": "Top Phishing Domains",
-        "timeContextFromParameter": "TimeRange",
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces"
-      },
-      "conditionalVisibility": {
-        "parameterName": "Tab",
-        "comparison": "isEqualTo",
-        "value": "MDO"
-      },
-      "customWidth": "50",
-      "name": "query - 26"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "SecurityIncident\r\n| summarize OpenedIncidents = countif(Status == \"New\"), ClosedIncidents = countif(Status == \"Closed\") by bin(TimeGenerated, 1d)\r\n| render timechart",
-        "size": 0,
-        "showAnalytics": true,
-        "title": "Incidents Opened Vs. Closed",
-        "timeContextFromParameter": "TimeRange",
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "linechart"
-      },
-      "conditionalVisibility": {
-        "parameterName": "Tab",
-        "comparison": "isEqualTo",
-        "value": "MDE"
-      },
-      "name": "query - 28"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "let SystemAlertId = SecurityAlert  \r\n//| where TimeGenerated > ago(30d)  \r\n| project SystemAlertId;  \r\nSecurityIncident  \r\n| where AlertIds has_any (SystemAlertId)  \r\n| summarize arg_max(TimeGenerated, *) by IncidentNumber  \r\n| extend assignedTo_ = tostring(Owner.assignedTo)  \r\n| summarize  \r\n    NewIncidents = countif(Status == \"New\"),  \r\n    ClosedIncidents = countif(Status == \"Closed\"),  \r\n    ActiveIncidents = countif(Status !in (\"Closed\", \"Resolved\"))  \r\nby Severity  \r\n| extend StatusIndicator = iff(ActiveIncidents == 0, \"✅\", \"🔍\")  \r\n| order by NewIncidents desc\r\n",
-        "size": 0,
-        "showAnalytics": true,
-        "timeContextFromParameter": "TimeRange",
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "table"
-      },
-      "conditionalVisibility": {
-        "parameterName": "Tab",
-        "comparison": "isEqualTo",
-        "value": "MDE"
-      },
-      "customWidth": "50",
-      "name": "query - 29"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "let SystemAlertId = SecurityAlert  \r\n| project SystemAlertId;  \r\nSecurityIncident  \r\n| where AlertIds has_any (SystemAlertId)  \r\n| where Status !in (\"Closed\", \"Resolved\")  // Exclude closed or resolved incidents\r\n| summarize OldestIncident = min(TimeGenerated) by IncidentNumber, Severity  \r\n| extend OldestTicketAge_Days = datetime_diff('day', now(), OldestIncident)  \r\n| summarize \r\n    Under_1_Week = countif(OldestTicketAge_Days < 7),\r\n    Under_30_Days = countif(OldestTicketAge_Days >= 7 and OldestTicketAge_Days < 30),\r\n    Over_30_Days = countif(OldestTicketAge_Days >= 30)\r\n  by Severity\r\n| order by Severity asc\r\n",
-        "size": 0,
-        "showAnalytics": true,
-        "timeContextFromParameter": "TimeRange",
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces"
-      },
-      "conditionalVisibility": {
-        "parameterName": "Tab",
-        "comparison": "isEqualTo",
-        "value": "MDE"
-      },
-      "customWidth": "33",
-      "name": "query - 35"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "let SystemAlertId = SecurityAlert  \r\n| where TimeGenerated > ago(30d)  \r\n| project SystemAlertId;  \r\nSecurityIncident  \r\n| where AlertIds has_any (SystemAlertId)  \r\n| where Status in (\"New\", \"Active\")  \r\n| summarize OldestIncident = min(TimeGenerated) by IncidentNumber, Severity  \r\n| order by OldestIncident asc  \r\n| extend OldestTicketAge_Days = datetime_diff('day', now(), OldestIncident)  \r\n| extend AgeCategory = case(\r\n    OldestTicketAge_Days < 7, \"🟢 New (< 7d)\", \r\n    OldestTicketAge_Days >= 7 and OldestTicketAge_Days <= 30, \"🟡 Aging (7-30d)\", \r\n    OldestTicketAge_Days > 30, \"🔴 Stale (> 30d)\", \r\n    \"Unknown\")  \r\n| project IncidentNumber, Severity, OldestIncident, OldestTicketAge_Days, AgeCategory\r\n//| sort by AgeCategory asc\r\n",
-        "size": 0,
-        "showAnalytics": true,
-        "timeContextFromParameter": "TimeRange",
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces"
-      },
-      "conditionalVisibility": {
-        "parameterName": "Tab",
-        "comparison": "isEqualTo",
-        "value": "MDE"
-      },
-      "customWidth": "50",
-      "name": "query - 27"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "let totalCount = toscalar(\r\n    SecurityAlert\r\n    | where TimeGenerated > ago(90d)\r\n    | where isnotempty(Tactics)\r\n    | mv-expand tactic = split(Tactics, \", \")\r\n    | summarize Total = count()\r\n);\r\nSecurityAlert\r\n| where TimeGenerated > ago(90d)\r\n| where isnotempty(Tactics)\r\n| mv-expand tactic = split(Tactics, \", \")\r\n| summarize Count = count() by tostring(tactic)\r\n| extend Percentage = strcat(round(Count * 100.0 / totalCount, 2),'%')\r\n| extend TacticEmoji = case(\r\n    tactic == \"InitialAccess\", \"🚪\",\r\n    tactic == \"Execution\", \"💥\",\r\n    tactic == \"Persistence\", \"📌\",\r\n    tactic == \"PrivilegeEscalation\", \"🚀\",\r\n    tactic == \"DefenseEvasion\", \"🕵️\",\r\n    tactic == \"CredentialAccess\", \"🔑\",\r\n    tactic == \"Discovery\", \"🔍\",\r\n    tactic == \"LateralMovement\", \"🔄\",\r\n    tactic == \"Collection\", \"📂\",\r\n    tactic == \"Exfiltration\", \"📤\",\r\n    tactic == \"Impact\", \"⚡\",\r\n    tactic == \"CommandAndControl\", \"📡\",\r\n    \"❓\"  // Default emoji for unknown tactics\r\n)\r\n| project Tactic = strcat(TacticEmoji, \" \", tactic), Count, Percentage\r\n| sort by Count desc\r\n| top 10 by Count\r\n",
-        "size": 0,
-        "showAnalytics": true,
-        "title": "Most Common MITRE ATT&CK Tactics",
-        "timeContextFromParameter": "TimeRange",
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces"
-      },
-      "conditionalVisibility": {
-        "parameterName": "Tab",
-        "comparison": "isEqualTo",
-        "value": "Mitre"
-      },
-      "customWidth": "50",
-      "name": "query - 30"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "SecurityAlert\r\n| where TimeGenerated > ago(90d)\r\n| where isnotempty(Tactics)\r\n| mv-expand tactic = split(Tactics, \", \")\r\n| summarize Count = count() by tostring(tactic)\r\n| sort by Count desc\r\n| top 10 by Count\r\n| render piechart",
-        "size": 2,
-        "showAnalytics": true,
-        "timeContextFromParameter": "TimeRange",
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces"
-      },
-      "conditionalVisibility": {
-        "parameterName": "Tab",
-        "comparison": "isEqualTo",
-        "value": "Mitre"
-      },
-      "customWidth": "50",
-      "name": "query - 32"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "let TotalCount = toscalar(\r\n    SecurityAlert\r\n    | where TimeGenerated > ago(90d)\r\n    | where isnotempty(Techniques)\r\n    | mv-expand technique = split(Techniques, \", \")\r\n    | summarize TotalCount = count()\r\n);\r\nSecurityAlert\r\n| where TimeGenerated > ago(90d)\r\n| where isnotempty(Techniques)\r\n| mv-expand technique = split(Techniques, \", \")\r\n| summarize Count = count() by tostring(technique)\r\n| extend Percentage = strcat(round(Count * 100.0 / TotalCount, 2),'%')\r\n| sort by Count desc\r\n| top 10 by Count\r\n| project [\"MITRE Technique\"] = technique, Count, Percentage\r\n",
-        "size": 0,
-        "showAnalytics": true,
-        "title": "Most Common MITRE ATT&CK Techniques",
-        "timeContextFromParameter": "TimeRange",
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces"
-      },
-      "conditionalVisibility": {
-        "parameterName": "Tab",
-        "comparison": "isEqualTo",
-        "value": "Mitre"
-      },
-      "customWidth": "50",
-      "name": "query - 31"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "SecurityAlert\r\n| where TimeGenerated > ago(90d)\r\n| where isnotempty(Techniques)\r\n| mv-expand technique = split(Techniques, \", \")\r\n| summarize Count = count() by tostring(technique)\r\n| sort by Count desc\r\n| top 10 by Count\r\n| project [\"MITRE Technique\"] = technique, Count",
-        "size": 2,
-        "showAnalytics": true,
-        "timeContextFromParameter": "TimeRange",
-        "showExportToExcel": true,
-        "queryType": 0,
-        "resourceType": "microsoft.operationalinsights/workspaces",
-        "visualization": "piechart"
-      },
-      "conditionalVisibility": {
-        "parameterName": "Tab",
-        "comparison": "isEqualTo",
-        "value": "Mitre"
-      },
-      "customWidth": "50",
-      "name": "query - 33"
     }
   ],
   "fallbackResourceIds": [
-    "/subscriptions/7075eed2-ad8b-441d-b795-d2a64ac57fe2/resourcegroups/foster-foster-sentinel/providers/microsoft.operationalinsights/workspaces/foster-foster-sentinel"
+    "/subscriptions/9057381f-d8be-4520-a0ed-1875d70fd4a3/resourcegroups/iot/providers/microsoft.operationalinsights/workspaces/pihole"
   ],
   "fromTemplateId": "sentinel-UserWorkbook",
   "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
