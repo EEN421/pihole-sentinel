@@ -96,7 +96,7 @@ for row in cur.execute('SELECT * FROM queries WHERE id >:id ORDER BY id', {"id":
         "EventOriginalUid": str(row['id']),
         "EventType": "lookup",
         "EventResult": QUERY_STATUS.get(int(row['status']), "Failure: Unrecognized").split(":")[0],
-        "EventResultDetails": QUERY_TYPES.get(row['type']),
+        "EventResultDetails": QUERY_STATUS.get(int(row['status']), "Failure: Unrecognized").split(":", 1)[1].strip(),
         "EventProduct": "Pi Hole",
         "EventVendor": "Pi Hole",
         "EventSchemaVersion": "0.1.1",
